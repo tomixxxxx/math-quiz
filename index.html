@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>クイズ × キャラコレクション（完全版・PW対応）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{ --bg:#f7f7fb; --card:#ffffff; --ink:#222; --muted:#667; --brand:#4e6cf4; --ok:#2aa776; --warn:#e6a100; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:16px 20px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.05);position:sticky;top:0;z-index:10}
+  h1{font-size:20px;margin:0}
+  .wrap{max-width:980px;margin:20px auto;padding:0 16px}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .card{background:var(--card);border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,.06);padding:16px}
+  .login,.controls,.quiz,.collection,.teacher{width:100%}
+  .login .row > *{flex:1}
+  input[type="text"], input[type="password"], select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:16px;background:#fff}
+  button{cursor:pointer;border:none;border-radius:12px;padding:10px 14px;font-weight:700}
+  .btn{background:var(--brand);color:#fff}
+  .btn.secondary{background:#e6e8ff;color:#2b2f7e}
+  .btn.ghost{background:#eef0f7;color:#2b2f7e}
+  .muted{color:var(--muted)}
+  .quiz h2{margin:0 0 8px}
+  .options{display:grid;gap:10px;margin-top:12px}
+  .opt{padding:12px;border:2px solid #e7e7ee;border-radius:12px;background:#fff;text-align:left}
+  .opt.correct{border-color:var(--ok)}
+  .opt.wrong{border-color:#d33}
+  .status{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .pill{padding:6px 10px;border-radius:999px;background:#eef0f7;font-size:12px}
+  .result-area{margin-top:14px}
+  .result-area img{max-width:160px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+  .grid img{width:100%;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .split{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+  @media (max-width:900px){.split{grid-template-columns:1fr}}
+  .progressbar{height:10px;background:#eef0f7;border-radius:999px;overflow:hidden}
+  .progressbar > span{display:block;height:100%;background:linear-gradient(90deg,var(--ok),#67d6a7)}
+  .small{font-size:12px}
+  .badge{background:#fff3c2;color:#6b4b00;border:1px solid #ffe28a}
+  .right{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap row" style="align-items:center;justify-content:space-between;">
+    <h1>クイズ × キャラコレ（PW対応）</h1>
+    <div class="right">
+      <button class="btn ghost" id="teacherBtn">教師モード</button>
+      <button class="btn secondary" id="showCollectionBtn">コレクション</button>
+      <button class="btn ghost" id="logoutBtn" style="display:none">ログアウト</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- Login -->
+  <section class="card login" id="loginCard">
+    <h2 style="margin:0 0 8px">ログイン</h2>
+    <p class="muted small">ニックネーム＋パスワードでログイン。初回は新規登録になります。</p>
+    <div class="row">
+      <div><input id="nickname" type="text" autocomplete="username" placeholder="ニックネームを入力" /></div>
+      <div><input id="password" type="password" autocomplete="current-password" placeholder="パスワード" /></div>
+      <div style="flex:0 0 auto"><button class="btn" id="loginBtn">はじめる</button></div>
+    </div>
+    <p class="muted small" id="loginHelp" style="margin-top:8px">※ ブラウザのローカル保存のみ（学校PC共有の場合はご注意ください）</p>
+  </section>
+
+  <!-- Controls -->
+  <section class="card controls" id="controlsCard" style="display:none">
+    <div class="row">
+      <div class="row" style="flex:1">
+        <div style="flex:1">
+          <label class="small muted">単元</label>
+          <select id="unitSelect"></select>
+        </div>
+        <div style="flex:1">
+          <label class="small muted">小単元</label>
+          <select id="subunitSelect"></select>
+        </div>
+      </div>
+      <div style="flex:0 0 auto;display:flex;gap:8px;align-items:flex-end">
+        <button class="btn ghost" id="prevQ">← 前の問題</button>
+        <button class="btn" id="nextQ">次の問題 →</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div style="flex:1">
+        <div class="status">
+          <span class="pill">ユーザー:<b id="currentUserLabel">-</b></span>
+          <span class="pill">進捗:<span id="progressText">0/5</span></span>
+          <span class="pill badge">初回正解でキャラGET!</span>
+        </div>
+        <div class="progressbar" style="margin-top:8px"><span id="progressBar" style="width:0%"></span></div>
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="btn secondary" id="resetSubunit">この小単元の進捗をリセット</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="split">
+    <!-- Quiz -->
+    <section class="card quiz" id="quizCard" style="display:none">
+      <h2 id="subunitTitle">-</h2>
+      <div class="muted small" id="qCounter">1 / 5</div>
+      <div id="questionText" style="margin-top:8px;font-size:18px;font-weight:600"></div>
+      <div id="options" class="options"></div>
+      <div id="feedback" class="result-area"></div>
+    </section>
+
+    <!-- Collection -->
+    <section class="card collection" id="collectionCard" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h2 style="margin:0">コレクション</h2>
+        <button class="btn ghost" id="hideCollectionBtn">閉じる</button>
+      </div>
+      <p class="muted small">コンプリートを目指そう!</p>
+      <div id="collectionGrid" class="grid"></div>
+    </section>
+  </div>
+
+  <!-- Teacher -->
+  <section class="card teacher" id="teacherCard" style="display:none">
+    <h2 style="margin:0 0 8px">教師モード</h2>
+    <div class="row">
+      <button class="btn ghost" id="switchUserBtn">ユーザー切替</button>
+      <button class="btn" id="exportBtn">進捗をJSONエクスポート</button>
+      <button class="btn" id="wipeBtn">このユーザーの全データ削除</button>
+      <button class="btn secondary" id="changePwBtn">このユーザーのパスワード変更</button>
+    </div>
+    <pre id="exportBox" style="margin-top:12px;white-space:pre-wrap;word-break:break-all;background:#0b1020;color:#e6ecff;border-radius:12px;padding:12px;display:none"></pre>
+  </section>
+</div>
+
+<script>
+/* ================= 画像:Google Drive直リンク ================ */
+const allCharacters = [
+  "https://drive.google.com/uc?export=view&id=12m_FCI2-jGCBj7HkMRiF89KAqLEeZ7um",
+  "https://drive.google.com/uc?export=view&id=1t-4CTjAw8ku78iI6aQZg82zphbyaJzSx",
+  "https://drive.google.com/uc?export=view&id=148-SiuyH2OipZN0hqqYf8-FBbEPY8P_1",
+  "https://drive.google.com/uc?export=view&id=1k8icMUbPhviCCgk6J47-VzY16INULG85",
+  "https://drive.google.com/uc?export=view&id=1qbqoxhkqsflv_KoeaCt4kMXhLnpu2Wis",
+  "https://drive.google.com/uc?export=view&id=17ry9Ema2PArSHv-4zrYaW_nKqK6oD1qA",
+  "https://drive.google.com/uc?export=view&id=1fLgzf-xDjx2bcidnU1zhrfbVZQCSj_IG",
+  "https://drive.google.com/uc?export=view&id=1FDzuAcYObFPL_q5LyrtLP6fOOI2q0GI8",
+  "https://drive.google.com/uc?export=view&id=1mtaNPgux84by8y-QU9YESO3NB_OApbDW",
+  "https://drive.google.com/uc?export=view&id=1kL99PFhjccY04BdmrxCdkxosPxUsabtq",
+  "https://drive.google.com/uc?export=view&id=1t_RdRHSDC1g4PXjqqH_Fa0pvBWWZGuE_",
+  "https://drive.google.com/uc?export=view&id=1Ve9ADY8hC9J3eWQZ84ytOQWdLJE92pMY",
+  "https://drive.google.com/uc?export=view&id=1fCYZ7u9i6KWMUOti-eYgE3AhG0ayEYKk",
+  "https://drive.google.com/uc?export=view&id=1kwN9Yr2oDlRcTn_P6_Us2vPPg1x_6FkQ",
+  "https://drive.google.com/uc?export=view&id=1bRSdKUBiNPZEFoM5pyKTgSLi6g_Tkuw5",
+  "https://drive.google.com/uc?export=view&id=1ZI9lQ7uScYH2rp3JqKbWbor2fm3DQw8M",
+  "https://drive.google.com/uc?export=view&id=1z99Ako8UvPAiGUEzvTFUkfjIPh5rao99",
+  "https://drive.google.com/uc?export=view&id=1nn5W-UMANpU08CcrOkCHJDl-m_F6lNj2",
+  "https://drive.google.com/uc?export=view&id=1_0e9GUYLL_Vr3aPkFLbiSsBObSpFv5bp",
+  "https://drive.google.com/uc?export=view&id=18DtAiqa3Ooss1NgfMiDNmhJW_U3ZVY6R",
+  "https://drive.google.com/uc?export=view&id=1_3J_WNokM6NLQ1u0E-U7gcyWfHI7Yzwh",
+  "https://drive.google.com/uc?export=view&id=1JBDFQQUdvYf2wgYVwtbZ1hUaTImB8PBM",
+  "https://drive.google.com/uc?export=view&id=1ltDo3jLgNyyF5o-m5RtZJxKi5yRrB2JA",
+  "https://drive.google.com/uc?export=view&id=12ImpwqqcxvprQf2TEW4y-_9YD2c12Jk3",
+  "https://drive.google.com/uc?export=view&id=1PU2-zwMerVwFtAIBPrpWbpYvDLSMaJ1C",
+  "https://drive.google.com/uc?export=view&id=1Mbr4h8nsUNzzviseyZUhQIe7Vj6Xdpao",
+  "https://drive.google.com/uc?export=view&id=1p956pFZmN83mIt2D5VVtoTBurjlR2XJR",
+  "https://drive.google.com/uc?export=view&id=1weZwwa9j0Qkdip5hhZuEbHccUGOug_6b",
+  "https://drive.google.com/uc?export=view&id=13IffBmqFxl9sr4q3Tx22zUWgjVYHQP5b",
+  "https://drive.google.com/uc?export=view&id=1Yxtii9ngfFIJKFHX8I7gUj5kNMBXh4NS",
+  "https://drive.google.com/uc?export=view&id=1tlKec643oljq-q6hnttsZCmzDLFGMibZ",
+  "https://drive.google.com/uc?export=view&id=1OAllQQjTA9jtDAW_2qTM8Q0GnlWif8Wf",
+  "https://drive.google.com/uc?export=view&id=1zVPXfi9ZVmoxvT7kxJaN-mlPcdLkHdXH",
+  "https://drive.google.com/uc?export=view&id=15_ugE6oappJ9nSbUa2VCooGTXXnlWXRc",
+  "https://drive.google.com/uc?export=view&id=1bIoaJvkS4C_vxHSD_e2pQ1UU5qtRr5p-",
+  "https://drive.google.com/uc?export=view&id=1-3BCNFwZWatqwxobHPwDjHzH7Jt-xZvp",
+  "https://drive.google.com/uc?export=view&id=17_Aiyq09FzIHBoZYjiiK4dRKsqmzX2w4",
+  "https://drive.google.com/uc?export=view&id=1ul2gNCCm3oKZSc8kP4Y9wioUP83XqVDa",
+  "https://drive.google.com/uc?export=view&id=1IgGcACVDSQ2SUvcc5wsZoTgCwVNmk3tJ"
+];
+
+/* ================== 問題データ（全単元） ================ */
+const units = {
+  "1-1 線対称": [
+    { q: "線対称の図形で、対称の軸は何本ありますか?正方形の場合", options: ["1","2","3","4"], answer: 4 },
+    { q: "線対称な図形はどれですか?", options: ["三角定規","L字型","台形","五角形"], answer: 1 },
+    { q: "線対称の図形でないものはどれですか?", options: ["円","二等辺三角形","長方形","不等辺三角形"], answer: 4 },
+    { q: "ひし形の対称の軸は何本ですか?", options: ["1","2","3","4"], answer: 2 },
+    { q: "線対称の図形は鏡に映すとどうなりますか?", options: ["同じ形になる","形が変わる","反転して違う形になる","大きくなる"], answer: 1 }
+  ],
+  "1-2 点対称": [
+    { q: "点対称な図形はどれですか?", options: ["正方形","円","長方形","ひし形"], answer: 4 },
+    { q: "アルファベットで点対称な文字はどれですか?", options: ["A","B","C","H"], answer: 4 },
+    { q: "点対称な図形は、180度回転させるとどうなりますか?", options: ["同じ形になる","逆さまになるが形は同じ","全く違う形になる","大きくなる"], answer: 2 },
+    { q: "点対称でない図形はどれですか?", options: ["円","五角形","長方形","正三角形"], answer: 4 },
+    { q: "正六角形は点対称ですか?", options: ["はい","いいえ","場合による","わからない"], answer: 1 }
+  ],
+  "2-1 文字を使った式の表し方": [
+    { q: "x個のリンゴがあり、1個100円なら代金は?", options: ["100x","x+100","100+x","x-100"], answer: 1 },
+    { q: "縦xcm、横ycmの長方形の面積は?", options: ["x+y","xy","x-y","2x+2y"], answer: 2 },
+    { q: "1個a円のお菓子をb個買う代金は?", options: ["a+b","a-b","ab","a/b"], answer: 3 },
+    { q: "m分を秒にすると?", options: ["60m","m/60","m+60","m-60"], answer: 1 },
+    { q: "縦x、横yの長方形の周の長さは?", options: ["x+y","2x+2y","xy","x-y"], answer: 2 }
+  ],
+  "2-2 文字を使った式の計算": [
+    { q: "3x+5xは?", options: ["8x","15x","x^8","2x"], answer: 1 },
+    { q: "2x-7xは?", options: ["-5x","5x","x","7x"], answer: 1 },
+    { q: "x×xは?", options: ["2x","x^2","x^3","x/2"], answer: 2 },
+    { q: "4x÷2は?", options: ["2x","x","8x","x/2"], answer: 1 },
+    { q: "5x+3yはこれ以上簡単にできる?", options: ["できる","できない","場合による","わからない"], answer: 2 }
+  ],
+  "3-1 分数×整数": [
+    { q: "3/4×8は?", options: ["6","8","9","10"], answer: 1 },
+    { q: "2/5×10は?", options: ["2","4","6","8"], answer: 2 },
+    { q: "7/8×16は?", options: ["12","14","15","13"], answer: 2 },
+    { q: "5/6×12は?", options: ["8","10","12","14"], answer: 2 },
+    { q: "4/9×27は?", options: ["10","12","14","16"], answer: 2 }
+  ],
+  "3-2 分数÷整数": [
+    { q: "3/4÷2は?", options: ["3/8","3/6","3/2","6/4"], answer: 1 },
+    { q: "5/6÷5は?", options: ["1/6","5/30","5/11","6/5"], answer: 1 },
+    { q: "7/8÷7は?", options: ["1/8","7/15","1/16","15/7"], answer: 3 },
+    { q: "2/3÷4は?", options: ["2/12","1/6","2/7","3/8"], answer: 2 },
+    { q: "9/10÷3は?", options: ["3/10","3/13","1/3","10/27"], answer: 1 }
+  ],
+  "3-3 分数×分数": [
+    { q: "2/3×3/4は?", options: ["1/2","2/7","3/8","1/3"], answer: 1 },
+    { q: "5/6×2/5は?", options: ["1/3","2/3","5/12","1/6"], answer: 1 },
+    { q: "7/8×4/7は?", options: ["1/2","4/8","1/3","2/7"], answer: 1 },
+    { q: "3/5×5/9は?", options: ["1/3","1/2","5/15","3/14"], answer: 1 },
+    { q: "4/7×14/5は?", options: ["8/5","4/5","2/7","7/8"], answer: 1 }
+  ],
+  "4-1 分数÷分数": [
+    { q: "2/3÷4/5は?", options: ["5/6","6/5","3/5","5/3"], answer: 1 },
+    { q: "3/4÷2/7は?", options: ["21/8","8/21","7/8","3/14"], answer: 1 },
+    { q: "5/6÷5/12は?", options: ["2","1/2","5/10","12/5"], answer: 1 },
+    { q: "7/8÷1/4は?", options: ["7/2","8/7","7/32","1/2"], answer: 1 },
+    { q: "9/10÷3/5は?", options: ["3/2","2/3","5/6","10/27"], answer: 1 }
+  ],
+  "4-2 分数の倍": [
+    { q: "3/4の2倍は?", options: ["3/2","6/4","1/2","4/3"], answer: 1 },
+    { q: "5/6の3倍は?", options: ["15/6","5/2","3/5","6/5"], answer: 1 },
+    { q: "2/5の4倍は?", options: ["8/5","5/8","4/5","2/8"], answer: 1 },
+    { q: "7/8の0.5倍は?", options: ["7/16","16/7","1/2","14/8"], answer: 1 },
+    { q: "9/10の1.5倍は?", options: ["27/20","20/27","3/5","5/3"], answer: 1 }
+  ],
+  "5-1 比の意味": [
+    { q: "3:4は次のどれと等しいですか?", options: ["6:8","4:5","9:10","12:13"], answer: 1 },
+    { q: "2:5と等しい比は?", options: ["4:10","5:12","3:5","7:9"], answer: 1 },
+    { q: "5:8と等しい比は?", options: ["10:16","8:13","15:24","1:2"], answer: 1 },
+    { q: "1:3と等しい比は?", options: ["2:6","3:9","4:12","全部"], answer: 4 },
+    { q: "6:9を簡単にすると?", options: ["2:3","3:4","4:5","3:5"], answer: 1 }
+  ],
+  "5-2 比の値の計算": [
+    { q: "8:12の値は?", options: ["2/3","3/2","4/6","6/4"], answer: 1 },
+    { q: "5:20の値は?", options: ["1/4","4","5","20"], answer: 1 },
+    { q: "9:15の値は?", options: ["3/5","5/3","2/3","1/2"], answer: 1 },
+    { q: "7:14の値は?", options: ["1/2","2","7/14","14/7"], answer: 1 },
+    { q: "12:18の値は?", options: ["2/3","3/2","4/6","6/4"], answer: 1 }
+  ],
+  "5-3 比の利用": [
+    { q: "3:5の比で8個のボールを分けます。少ない方は何個ですか?", options: ["3","4","5","8"], answer: 2 },
+    { q: "2:3の比で20個の飴を分けます。多い方は何個ですか?", options: ["8","10","12","15"], answer: 3 },
+    { q: "4:1の比で10Lのジュースを分けます。少ない方は何Lですか?", options: ["2","4","6","8"], answer: 1 },
+    { q: "5:7の比で24mのリボンを分けます。多い方は何mですか?", options: ["10","12","14","16"], answer: 3 },
+    { q: "1:4の比で25枚のカードを分けます。多い方は何枚ですか?", options: ["4","5","20","25"], answer: 3 }
+  ],
+  "6-1 拡大図": [
+    { q: "長さ4cmの線分を、2倍に拡大すると長さは何cmになりますか?", options: ["6","8","10","12"], answer: 2 },
+    { q: "三角形の各辺の長さが2cm, 3cm, 4cmのとき、1.5倍に拡大した三角形の最も長い辺は何cmですか?", options: ["5","5.5","6","6.5"], answer: 3 },
+    { q: "正方形の一辺が5cmの図形を、3倍に拡大したときの一辺の長さは何cmですか?", options: ["10","12","15","20"], answer: 3 },
+    { q: "半径3cmの円を2倍に拡大したときの半径は何cmですか?", options: ["5","6","7","8"], answer: 4 },
+    { q: "長さ9cmの線分を、0.5倍に縮小すると長さは何cmになりますか?", options: ["4.5","5","6","7"], answer: 1 }
+  ],
+  "6-2 縮図": [
+    { q: "実際の長さ20mを、1/100の縮
